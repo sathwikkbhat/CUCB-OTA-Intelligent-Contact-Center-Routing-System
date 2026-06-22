@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQRS · Smart Queue Routing System</title>
+  <meta name="description" content="CUCB-OTA routing intelligence dashboard — real-time agent metrics, policy comparison, and live simulation control." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0c0c0c;
+  --s1:        #141414;
+  --s2:        #1c1c1c;
+  --s3:        #242424;
+  --b1:        #262626;
+  --b2:        #333;
+
+  --t1:        #f0f0f0;
+  --t2:        #888;
+  --t3:        #444;
+
+  --a:         #6472f3;
+  --a-dim:     rgba(100,114,243,.1);
+  --a-glow:    rgba(100,114,243,.25);
+
+  --green:     #4ade80;
+  --green-dim: rgba(74,222,128,.1);
+  --red:       #f87171;
+  --red-dim:   rgba(248,113,113,.1);
+  --amber:     #fbbf24;
+  --amber-dim: rgba(251,191,36,.1);
+
+  --r:  10px;
+  --rs: 7px;
+  --sidebar: 200px;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--t1); font-family: 'Inter', system-ui, sans-serif; font-size: 13px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+/* ── Layout ── */
+.shell { display: flex; height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar);
+  flex-shrink: 0;
+  background: var(--s1);
+  border-right: 1px solid var(--b1);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow-y: auto;
+}
+.sb-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 18px 16px;
+  border-bottom: 1px solid var(--b1);
+}
+.sb-mark {
+  width: 28px; height: 28px;
+  background: var(--a);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.sb-mark svg { width: 14px; height: 14px; }
+.sb-name { font-size: 13px; font-weight: 600; color: var(--t1); letter-spacing: -0.2px; }
+.sb-sub  { font-size: 10px; color: var(--t3); margin-top: 1px; }
+
+.sb-nav { padding: 10px 8px; flex: 1; }
+.sb-nav-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--t3);
+  padding: 8px 8px 4px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--rs);
+  cursor: pointer;
+  color: var(--t2);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background .12s, color .12s;
+  user-select: none;
+}
+.nav-item:hover { background: var(--s2); color: var(--t1); }
+.nav-item.active { background: var(--a-dim); color: var(--a); }
+.nav-ico { width: 15px; text-align: center; flex-shrink: 0; display: flex; align-items: center; }
+.nav-ico svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+.sb-footer {
+  padding: 14px 16px;
+  border-top: 1px solid var(--b1);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--t3);
+  flex-shrink: 0;
+  transition: background .3s;
+  position: relative;
+}
+.live-dot.on { background: var(--green); }
+.live-dot.on::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--green);
+  animation: ripple 1.8s ease-out infinite;
+  opacity: .5;
+}
+@keyframes ripple { 0% { transform: scale(1); opacity: .5; } 100% { transform: scale(2.2); opacity: 0; } }
+.live-label { font-size: 11px; color: var(--t3); }
+
+/* Main */
+.main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+/* Topbar */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: rgba(12,12,12,.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--b1);
+  padding: 0 24px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.topbar-left { display: flex; align-items: center; gap: 8px; }
+.topbar-breadcrumb { font-size: 13px; color: var(--t2); }
+.topbar-title { font-size: 13px; font-weight: 500; color: var(--t1); }
+.topbar-sep { color: var(--t3); margin: 0 2px; }
+.topbar-actions { display: flex; align-items: center; gap: 6px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px;
+  border-radius: var(--rs);
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: 1px solid transparent;
+  transition: all .12s; white-space: nowrap; line-height: 1;
+}
+.btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.btn-default { background: var(--s2); border-color: var(--b1); color: var(--t2); }
+.btn-default:hover { background: var(--s3); color: var(--t1); border-color: var(--b2); }
+.btn-primary { background: var(--a); border-color: var(--a); color: #fff; }
+.btn-primary:hover { background: #7380f5; }
+.btn-primary:active { transform: scale(.98); }
+.btn-danger { background: var(--red-dim); border-color: rgba(248,113,113,.2); color: var(--red); }
+.btn-danger:hover { background: rgba(248,113,113,.18); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+@keyframes spin-anim { to { transform: rotate(360deg); } }
+.spinning { animation: spin-anim .65s linear infinite; }
+
+/* Content */
+.content { padding: 24px; flex: 1; max-width: 1440px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* Page header */
+.ph { margin-bottom: 20px; }
+.ph h1 { font-size: 18px; font-weight: 600; color: var(--t1); letter-spacing: -0.3px; }
+.ph p { font-size: 12px; color: var(--t2); margin-top: 3px; }
+
+/* Grid */
+.g4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.g3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.g2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; }
+.row { display: flex; gap: 12px; }
+.col-l { flex: 3; min-width: 0; }
+.col-r { flex: 1; min-width: 220px; }
+.mb { margin-bottom: 12px; }
+
+/* Cards */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--b1);
+  border-radius: var(--r);
+  padding: 18px;
+}
+.card-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-title { font-size: 11px; font-weight: 500; color: var(--t2); text-transform: uppercase; letter-spacing: 0.07em; }
+.card-action { font-size: 11px; color: var(--t3); cursor: pointer; }
+.card-action:hover { color: var(--t2); }
+
+/* KPI */
+.kpi { padding: 16px 18px; }
+.kpi-label { font-size: 11px; font-weight: 500; color: var(--t3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+.kpi-value { font-size: 28px; font-weight: 600; color: var(--t1); letter-spacing: -0.5px; font-variant-numeric: tabular-nums; line-height: 1; }
+.kpi-meta { font-size: 11px; color: var(--t3); margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
+.kpi-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 500;
+  padding: 2px 6px; border-radius: 4px; margin-top: 8px;
+}
+.kpi-badge.ok { background: var(--green-dim); color: var(--green); }
+.kpi-badge.warn { background: var(--red-dim); color: var(--red); }
+.kpi-badge.neutral { background: var(--s3); color: var(--t3); }
+
+/* Divider */
+.divider { height: 1px; background: var(--b1); margin: 16px 0; }
+
+/* Agent grid */
+.agent-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(148px,1fr)); gap: 8px; }
+.agent-card {
+  background: var(--s2);
+  border: 1px solid var(--b1);
+  border-radius: var(--rs);
+  padding: 12px;
+  transition: border-color .15s;
+}
+.agent-card:hover { border-color: var(--b2); }
+.agent-card.busy { border-color: rgba(251,191,36,.15); }
+.a-id { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--t3); margin-bottom: 6px; }
+.a-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 500;
+  padding: 2px 6px; border-radius: 4px; margin-bottom: 8px;
+}
+.a-badge.idle { background: var(--green-dim); color: var(--green); }
+.a-badge.busy { background: var(--amber-dim); color: var(--amber); }
+.a-load { font-size: 11px; color: var(--t3); }
+.a-skills { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 7px; }
+.skill {
+  font-size: 9px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 1px 5px; border-radius: 3px;
+  background: var(--s3); color: var(--t3);
+}
+.skill.billing   { color: var(--amber); background: var(--amber-dim); }
+.skill.technical { color: var(--a); background: var(--a-dim); }
+.skill.sales     { background: rgba(168,85,247,.1); color: #c084fc; }
+.skill.vip       { background: var(--red-dim); color: var(--red); }
+
+/* Feed */
+.feed-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--b1);
+}
+.feed-item:last-child { border-bottom: none; }
+.feed-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.feed-body { flex: 1; min-width: 0; }
+.feed-pair { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feed-meta { font-size: 10px; color: var(--t3); margin-top: 1px; }
+.feed-score { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; flex-shrink: 0; }
+
+/* Policy table */
+.ptable { width: 100%; border-collapse: collapse; }
+.ptable th { text-align: left; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .07em; color: var(--t3); padding: 0 10px 10px 0; }
+.ptable td { padding: 8px 10px 8px 0; border-top: 1px solid var(--b1); font-size: 12px; color: var(--t2); }
+.ptable .best-val { color: var(--green); font-weight: 600; }
+.ptable .pol-name { display: flex; align-items: center; gap: 7px; color: var(--t1); font-weight: 500; }
+.pol-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* Chart */
+.chart-h { position: relative; height: 200px; }
+.chart-h2 { position: relative; height: 160px; }
+
+/* Dual bars */
+.dual-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.dual-key { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t3); width: 65px; flex-shrink: 0; }
+.dual-track { flex: 1; height: 3px; background: var(--s3); border-radius: 99px; overflow: hidden; }
+.dual-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
+.dual-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; color: var(--t2); width: 44px; text-align: right; }
+
+/* Constraint row */
+.con-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--b1); }
+.con-row:last-child { border-bottom: none; }
+.con-name { font-size: 12px; color: var(--t2); width: 110px; flex-shrink: 0; }
+.con-track { flex: 1; height: 3px; background: var(--s3); border-radius: 99px; overflow: hidden; }
+.con-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
+.con-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; width: 68px; text-align: right; }
+.con-status { width: 14px; text-align: center; font-size: 11px; }
+
+/* Sim panel */
+.sim-panel {
+  border: 1px solid var(--b1);
+  border-radius: var(--r);
+  padding: 18px;
+  background: var(--s1);
+}
+.sim-panel h3 { font-size: 14px; font-weight: 600; color: var(--t1); margin-bottom: 4px; }
+.sim-panel p { font-size: 12px; color: var(--t2); margin-bottom: 16px; }
+.sim-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sim-select {
+  background: var(--s2); border: 1px solid var(--b1); border-radius: var(--rs);
+  color: var(--t1); padding: 5px 10px; font-family: inherit; font-size: 12px; cursor: pointer;
+}
+.sim-select:focus { outline: none; border-color: var(--a); }
+.sim-input {
+  background: var(--s2); border: 1px solid var(--b1); border-radius: var(--rs);
+  color: var(--t1); padding: 5px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  width: 68px; text-align: center;
+}
+.sim-input:focus { outline: none; border-color: var(--a); }
+.sim-label { font-size: 12px; color: var(--t3); }
+
+/* Sim log */
+.sim-log {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--t2); max-height: 240px; overflow-y: auto;
+  background: var(--bg); border-radius: var(--rs);
+  padding: 12px; line-height: 1.7;
+  border: 1px solid var(--b1);
+  margin-top: 12px;
+}
+.log-ts { color: var(--t3); }
+.log-ok { color: var(--green); }
+.log-warn { color: var(--amber); }
+.log-err { color: var(--red); }
+.log-info { color: var(--a); }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.7);
+  display: none; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--s1);
+  border: 1px solid var(--b2);
+  border-radius: 14px;
+  width: min(680px, 92vw);
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0,0,0,.6);
+}
+.modal-hd {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--b1);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-size: 14px; font-weight: 600; color: var(--t1); }
+.modal-close {
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  background: var(--s2); border: 1px solid var(--b1);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--t2); font-size: 14px;
+  transition: background .12s;
+}
+.modal-close:hover { background: var(--s3); }
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; line-height: 1.8;
+  color: var(--t2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Toast */
+.toast-stack {
+  position: fixed; bottom: 20px; right: 20px;
+  display: flex; flex-direction: column; gap: 6px; z-index: 500;
+}
+.toast {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: var(--s2);
+  border: 1px solid var(--b2);
+  border-radius: var(--rs);
+  font-size: 12px; color: var(--t1);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  animation: tIn .2s ease; max-width: 300px;
+}
+@keyframes tIn { from { transform: translateY(8px); opacity: 0; } }
+.toast.ok   { border-left: 2px solid var(--green); }
+.toast.err  { border-left: 2px solid var(--red); }
+.toast.info { border-left: 2px solid var(--a); }
+.toast-icon { flex-shrink: 0; font-size: 13px; }
+
+/* Config grid */
+.cfg-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--b1); }
+.cfg-row:last-child { border-bottom: none; }
+.cfg-key { font-size: 11px; color: var(--t3); }
+.cfg-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--t1); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 99px; }
+
+/* Tag */
+.tag {
+  display: inline-flex; align-items: center;
+  font-size: 10px; font-weight: 500;
+  padding: 2px 7px; border-radius: 4px;
+}
+.tag-a { background: var(--a-dim); color: var(--a); }
+.tag-g { background: var(--green-dim); color: var(--green); }
+.tag-r { background: var(--red-dim); color: var(--red); }
+
+@media (max-width: 1100px) { .g4 { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 780px)  { .sidebar { display: none; } .g4,.g3,.g2 { grid-template-columns: 1fr; } .row { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="sb-name">SQRS</div>
+      <div class="sb-sub">CUCB-OTA Engine</div>
+    </div>
+  </div>
+
+  <nav class="sb-nav">
+    <div class="sb-nav-label">Dashboard</div>
+    <div class="nav-item active" id="nav-overview" onclick="navTo(this,'overview')">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+      Overview
+    </div>
+    <div class="nav-item" id="nav-agents" onclick="navTo(this,'agents')">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/></svg></span>
+      Agents
+    </div>
+    <div class="nav-item" id="nav-policies" onclick="navTo(this,'policies')">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M3 3h18v4H3z"/><path d="M3 11h18v4H3z"/><path d="M3 19h18v4H3z" opacity=".4"/><path d="M3 19h18"/></svg></span>
+      Policies
+    </div>
+    <div class="nav-item" id="nav-assignments" onclick="navTo(this,'assignments')">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+      Assignments
+    </div>
+    <div class="nav-item" id="nav-simulation" onclick="navTo(this,'simulation')">
+      <span class="nav-ico"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></span>
+      Simulation
+    </div>
+  </nav>
+
+  <div class="sb-footer" style="padding: 16px; border-top: 1px solid rgba(255,255,255,0.08);">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+      <div class="live-dot" id="live-dot"></div>
+      <div class="live-label" id="live-label">Connecting…</div>
+    </div>
+    <div class="api-config" style="display: flex; flex-direction: column; gap: 4px;">
+      <label for="api-url-input" style="font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.05em;">Backend API URL</label>
+      <input type="text" id="api-url-input" placeholder="http://localhost:5000" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 4px; padding: 5px 8px; font-size: 11px; width: 100%; box-sizing: border-box; outline: none; transition: border-color 0.2s;" onchange="updateAPIUrl(this.value)" />
+    </div>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-breadcrumb">SQRS</span>
+      <span class="topbar-sep">/</span>
+      <span class="topbar-title" id="page-label">Overview</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-default" id="btn-clear" onclick="clearSim(this)" title="Reset all simulation data">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg>
+        Clear
+      </button>
+      <button class="btn btn-default" id="btn-report" onclick="viewReport()" title="View full simulation report">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        View Report
+      </button>
+      <button class="btn btn-primary" id="btn-run" onclick="quickRunSim()">
+        <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Run Simulation
+      </button>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ── OVERVIEW ── -->
+    <section id="section-overview" class="section active">
+      <div class="ph">
+        <h1>Overview</h1>
+        <p>Real-time performance metrics from the CUCB-OTA routing engine</p>
+      </div>
+
+      <div class="g4 mb">
+        <div class="card kpi">
+          <div class="kpi-label">CSAT Score</div>
+          <div class="kpi-value" id="kpi-csat">—</div>
+          <div class="kpi-meta" id="kpi-csat-meta">customer satisfaction</div>
+          <div class="kpi-badge neutral" id="kpi-csat-badge">awaiting data</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-label">Avg Handle Time</div>
+          <div class="kpi-value" id="kpi-aht">—</div>
+          <div class="kpi-meta">min · threshold 8.0</div>
+          <div class="kpi-badge neutral" id="kpi-aht-badge">awaiting data</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-label">SLA Met Rate</div>
+          <div class="kpi-value" id="kpi-sla">—</div>
+          <div class="kpi-meta">target ≥ 85%</div>
+          <div class="kpi-badge neutral" id="kpi-sla-badge">awaiting data</div>
+        </div>
+        <div class="card kpi">
+          <div class="kpi-label">Fairness (Gini)</div>
+          <div class="kpi-value" id="kpi-gini">—</div>
+          <div class="kpi-meta">threshold ≤ 0.30</div>
+          <div class="kpi-badge neutral" id="kpi-gini-badge">awaiting data</div>
+        </div>
+      </div>
+
+      <div class="row mb">
+        <div class="col-l">
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">Performance over time</span>
+              <span class="tag tag-a">CUCB-OTA</span>
+            </div>
+            <div class="chart-h">
+              <canvas id="chart-conv"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-r">
+          <div class="card" style="height:100%">
+            <div class="card-hd">
+              <span class="card-title">Constraint health</span>
+            </div>
+            <div class="con-row">
+              <span class="con-name">AHT ≤ 8.0 min</span>
+              <div class="con-track"><div class="con-fill" id="con-aht" style="width:0%"></div></div>
+              <span class="con-val" id="cv-aht">—</span>
+              <span class="con-status" id="cs-aht">·</span>
+            </div>
+            <div class="con-row">
+              <span class="con-name">SLA ≥ 85%</span>
+              <div class="con-track"><div class="con-fill" id="con-sla" style="width:0%"></div></div>
+              <span class="con-val" id="cv-sla">—</span>
+              <span class="con-status" id="cs-sla">·</span>
+            </div>
+            <div class="con-row">
+              <span class="con-name">Gini ≤ 0.30</span>
+              <div class="con-track"><div class="con-fill" id="con-gin" style="width:0%"></div></div>
+              <span class="con-val" id="cv-gin">—</span>
+              <span class="con-status" id="cs-gin">·</span>
+            </div>
+            <div class="divider"></div>
+            <div class="card-hd" style="margin-bottom:12px">
+              <span class="card-title">Dual variables (λ)</span>
+            </div>
+            <div class="dual-row">
+              <span class="dual-key">λ_aht</span>
+              <div class="dual-track"><div class="dual-fill" id="d-aht" style="width:0%;background:var(--a)"></div></div>
+              <span class="dual-val" id="dv-aht">—</span>
+            </div>
+            <div class="dual-row">
+              <span class="dual-key">λ_sla</span>
+              <div class="dual-track"><div class="dual-fill" id="d-sla" style="width:0%;background:var(--a)"></div></div>
+              <span class="dual-val" id="dv-sla">—</span>
+            </div>
+            <div class="dual-row">
+              <span class="dual-key">λ_fair</span>
+              <div class="dual-track"><div class="dual-fill" id="d-fair" style="width:0%;background:var(--amber)"></div></div>
+              <span class="dual-val" id="dv-fair">—</span>
+            </div>
+            <div class="divider"></div>
+            <div class="card-hd" style="margin-bottom:10px"><span class="card-title">System config</span></div>
+            <div id="cfg-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── AGENTS ── -->
+    <section id="section-agents" class="section">
+      <div class="ph">
+        <h1>Agents</h1>
+        <p>30 agents across voice, chat, and email channels</p>
+      </div>
+      <div class="card">
+        <div class="card-hd">
+          <span class="card-title">Agent pool</span>
+          <span class="tag tag-g" id="agent-tag">loading…</span>
+        </div>
+        <div class="agent-grid" id="agent-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── POLICIES ── -->
+    <section id="section-policies" class="section">
+      <div class="ph">
+        <h1>Policies</h1>
+        <p>CUCB-OTA vs FCFS vs Skill-Greedy baseline comparison</p>
+      </div>
+      <div class="row mb">
+        <div class="col-l">
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">Metric comparison</span>
+            </div>
+            <div class="chart-h">
+              <canvas id="chart-policy"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-r">
+          <div class="card" style="height:100%">
+            <div class="card-hd"><span class="card-title">Results</span></div>
+            <table class="ptable">
+              <thead>
+                <tr>
+                  <th>Policy</th><th>CSAT</th><th>SLA</th><th>Gini</th>
+                </tr>
+              </thead>
+              <tbody id="policy-tbody">
+                <tr><td colspan="4" style="color:var(--t3);font-size:11px;padding-top:12px">Run a simulation to compare policies</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── ASSIGNMENTS ── -->
+    <section id="section-assignments" class="section">
+      <div class="ph">
+        <h1>Assignments</h1>
+        <p>Most recent routing decisions</p>
+      </div>
+      <div class="row mb">
+        <div class="col-l">
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title">Assignment feed</span>
+              <span class="tag tag-g" id="assign-tag">0</span>
+            </div>
+            <div id="feed" style="max-height:420px;overflow-y:auto">
+              <div style="color:var(--t3);font-size:12px;padding:8px 0">No assignments yet — run a simulation.</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-r">
+          <div class="card">
+            <div class="card-hd"><span class="card-title">By channel</span></div>
+            <div class="chart-h2"><canvas id="chart-ch"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SIMULATION ── -->
+    <section id="section-simulation" class="section">
+      <div class="ph">
+        <h1>Simulation</h1>
+        <p>Run the routing engine with a selected policy and batch configuration</p>
+      </div>
+
+      <div class="sim-panel mb">
+        <h3>Run simulation</h3>
+        <p>Generates customer batches, applies routing policy, and streams results live.</p>
+        <div class="sim-row">
+          <select class="sim-select" id="pol-select">
+            <option value="CUCB-OTA">CUCB-OTA</option>
+            <option value="FCFS">FCFS Baseline</option>
+            <option value="Skill-Greedy">Skill-Greedy</option>
+          </select>
+          <input type="number" class="sim-input" id="batch-n" value="50" min="10" max="200" />
+          <span class="sim-label">batches</span>
+          <button class="btn btn-primary" id="start-btn" onclick="startSim()">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Start
+          </button>
+          <button class="btn btn-danger" id="stop-btn" onclick="stopSim()" disabled>
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            Stop
+          </button>
+        </div>
+        <div class="sim-log" id="sim-log">Waiting for simulation…</div>
+      </div>
+    </section>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- Report modal -->
+<div class="modal-overlay" id="report-modal">
+  <div class="modal">
+    <div class="modal-hd">
+      <span class="modal-title">Simulation Report</span>
+      <div class="modal-close" onclick="closeModal()">✕</div>
+    </div>
+    <div class="modal-body" id="modal-body">Loading…</div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toasts"></div>
+
+<script>
+/* ── Core ────────────────────────── */
+let API = localStorage.getItem('cucb_api_url') || 'http://localhost:5000';
+const $ = id => document.getElementById(id);
+let socket = null, prevMetrics = null;
+let cvgData = { labels: [], csat: [], sla: [] };
+let cvgChart = null, polChart = null, chChart = null;
+
+/* ── Toast ─────────────────────── */
+function toast(msg, type='info', dur=3000) {
+  const icons = { ok:'✓', err:'✕', info:'·' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span class="toast-icon">${icons[type]||'·'}</span>${msg}`;
+  $('toasts').appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transition='.2s'; setTimeout(()=>el.remove(),200); }, dur);
+}
+
+/* ── Nav ────────────────────────── */
+function navTo(el, id) {
+  document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  $('section-'+id).classList.add('active');
+  $('page-label').textContent = id.charAt(0).toUpperCase() + id.slice(1);
+}
+
+/* ── Charts ─────────────────────── */
+const baseOpts = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#1c1c1c', borderColor: '#333', borderWidth: 1,
+      titleColor: '#f0f0f0', bodyColor: '#888', padding: 10,
+      callbacks: { label: c => `  ${c.dataset.label}: ${c.parsed.y.toFixed(3)}` }
+    }
+  },
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#444', font: { size: 10, family: 'JetBrains Mono' }, maxTicksLimit: 10 } },
+    y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#444', font: { size: 10, family: 'JetBrains Mono' } } }
+  }
+};
+
+function initCharts() {
+  /* Convergence */
+  cvgChart = new Chart($('chart-conv').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'CSAT', data: [], borderColor: '#6472f3', backgroundColor: 'rgba(100,114,243,.06)', borderWidth: 1.5, fill: true, tension: 0.4, pointRadius: 0 },
+        { label: 'SLA Rate', data: [], borderColor: 'rgba(255,255,255,.2)', borderDash: [4,3], backgroundColor: 'transparent', borderWidth: 1.5, fill: false, tension: 0.4, pointRadius: 0 }
+      ]
+    },
+    options: {
+      ...baseOpts,
+      plugins: {
+        ...baseOpts.plugins,
+        legend: { display: true, labels: { color: '#666', font: { size: 11, family: 'Inter' }, boxWidth: 10, padding: 16 } }
+      },
+      scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, min: 0, max: 1 } }
+    }
+  });
+
+  /* Policy bar */
+  polChart = new Chart($('chart-policy').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['CSAT', 'SLA Rate', 'Fairness (inv.)'],
+      datasets: [
+        { label: 'CUCB-OTA',    data: [0,0,0], backgroundColor: 'rgba(100,114,243,.7)', borderRadius: 4 },
+        { label: 'FCFS',        data: [0,0,0], backgroundColor: 'rgba(255,255,255,.12)', borderRadius: 4 },
+        { label: 'Skill-Greedy',data: [0,0,0], backgroundColor: 'rgba(74,222,128,.25)', borderRadius: 4 }
+      ]
+    },
+    options: {
+      ...baseOpts,
+      plugins: {
+        ...baseOpts.plugins,
+        legend: { display: true, labels: { color: '#666', font: { size: 11, family: 'Inter' }, boxWidth: 10, padding: 14 } }
+      },
+      scales: {
+        x: { ...baseOpts.scales.x, grid: { display: false } },
+        y: { ...baseOpts.scales.y, min: 0, max: 1 }
+      }
+    }
+  });
+
+  /* Channel doughnut */
+  chChart = new Chart($('chart-ch').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Voice', 'Chat', 'Email'],
+      datasets: [{ data: [1,1,1], backgroundColor: ['rgba(100,114,243,.8)','rgba(255,255,255,.15)','rgba(251,191,36,.6)'], borderColor: 'transparent', cutout: '72%' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { color: '#666', font: { size: 11 }, boxWidth: 8, padding: 12 } },
+        tooltip: { backgroundColor: '#1c1c1c', borderColor: '#333', borderWidth: 1, titleColor: '#f0f0f0', bodyColor: '#888' }
+      }
+    }
+  });
+}
+
+/* ── Fetch helpers ──────────────── */
+async function get(path) {
+  try { const r = await fetch(API + path); return r.ok ? r.json() : null; }
+  catch { return null; }
+}
+
+/* ── KPI update ─────────────────── */
+function badge(id, ok, okTxt, failTxt) {
+  const el = $(id);
+  el.className = `kpi-badge ${ok ? 'ok' : 'warn'}`;
+  el.textContent = ok ? okTxt : failTxt;
+}
+
+function updateKPIs(d) {
+  const { csat, aht, sla_met_rate: sla, gini, total_assignments: ta } = d;
+
+  if (typeof csat === 'number') {
+    $('kpi-csat').textContent = csat > 0 ? csat.toFixed(3) : '0.000';
+    $('kpi-csat-meta').textContent = ta ? `${ta} assignments` : 'no data yet';
+    if (ta > 0) badge('kpi-csat-badge', csat >= 0.6, 'within range', 'below target');
+    else { $('kpi-csat-badge').className = 'kpi-badge neutral'; $('kpi-csat-badge').textContent = 'run simulation'; }
+  }
+  if (typeof aht === 'number') {
+    $('kpi-aht').textContent = aht > 0 ? aht.toFixed(2) : '0.00';
+    badge('kpi-aht-badge', aht <= 8, '✓ within limit', '⚠ over limit');
+    const pct = Math.min(100, (aht/10)*100);
+    $('con-aht').style.cssText = `width:${pct}%;background:${aht<=8?'var(--a)':'var(--red)'}`;
+    $('cv-aht').textContent = aht.toFixed(2) + ' min';
+    $('cv-aht').style.color = aht<=8 ? 'var(--t1)' : 'var(--red)';
+    $('cs-aht').textContent = aht<=8 ? '✓' : '✕';
+    $('cs-aht').style.color = aht<=8 ? 'var(--green)' : 'var(--red)';
+  }
+  if (typeof sla === 'number') {
+    $('kpi-sla').textContent = (sla*100).toFixed(1) + '%';
+    badge('kpi-sla-badge', sla >= 0.85, '✓ above target', '⚠ below target');
+    const pct = Math.min(100, sla*100);
+    $('con-sla').style.cssText = `width:${pct}%;background:${sla>=0.85?'var(--a)':'var(--red)'}`;
+    $('cv-sla').textContent = (sla*100).toFixed(1) + '%';
+    $('cv-sla').style.color = sla>=0.85 ? 'var(--t1)' : 'var(--red)';
+    $('cs-sla').textContent = sla>=0.85 ? '✓' : '✕';
+    $('cs-sla').style.color = sla>=0.85 ? 'var(--green)' : 'var(--red)';
+  }
+  if (typeof gini === 'number') {
+    $('kpi-gini').textContent = gini.toFixed(3);
+    badge('kpi-gini-badge', gini <= 0.30, '✓ balanced', '⚠ unbalanced');
+    const pct = Math.min(100, gini*250);
+    $('con-gin').style.cssText = `width:${pct}%;background:${gini<=0.3?'var(--a)':'var(--amber)'}`;
+    $('cv-gin').textContent = gini.toFixed(3);
+    $('cv-gin').style.color = gini<=0.3 ? 'var(--t1)' : 'var(--amber)';
+    $('cs-gin').textContent = gini<=0.3 ? '✓' : '⚠';
+    $('cs-gin').style.color = gini<=0.3 ? 'var(--green)' : 'var(--amber)';
+  }
+  prevMetrics = d;
+}
+
+/* ── Fetch functions ────────────── */
+async function fetchMetrics()  { const d = await get('/api/metrics/current'); if (d) updateKPIs(d); }
+async function fetchConfig()   {
+  const d = await get('/api/config');
+  if (!d) return;
+  $('cfg-list').innerHTML = [
+    ['Agents', d.num_agents],
+    ['Customers / batch', d.num_customers_per_batch],
+    ['Max AHT', d.max_aht_minutes + ' min'],
+    ['Gini threshold', d.fairness_gini_threshold],
+    ['Channels', (d.channels||[]).join(', ')]
+  ].map(([k,v]) => `<div class="cfg-row"><span class="cfg-key">${k}</span><span class="cfg-val">${v}</span></div>`).join('');
+}
+async function fetchDual() {
+  const d = await get('/api/constraints/dual');
+  if (!d) return;
+  const set = (bar,val,key) => {
+    $(bar).style.width = Math.min(100,(val/.3)*100)+'%';
+    $(key).textContent = val.toFixed(3);
+  };
+  if (d.lambda_aht      !== undefined) set('d-aht',  d.lambda_aht,      'dv-aht');
+  if (d.lambda_sla      !== undefined) set('d-sla',  d.lambda_sla,      'dv-sla');
+  if (d.lambda_fairness !== undefined) set('d-fair', d.lambda_fairness,  'dv-fair');
+}
+async function fetchAgents() {
+  const d = await get('/api/agents');
+  if (!d) return;
+  const agents = d.agents || [];
+  $('agent-tag').textContent = `${agents.length} agents`;
+  const skills = ['technical','billing','sales','general','vip'];
+  $('agent-grid').innerHTML = agents.map(a => {
+    const busy = a.current_load > 0;
+    const top = skills.map(s=>({s,v:a.skills?.[s]||0})).filter(x=>x.v>0.5).sort((a,b)=>b.v-a.v).slice(0,2);
+    return `<div class="agent-card ${busy?'busy':''}">
+      <div class="a-id">${a.agent_id}</div>
+      <div class="a-badge ${busy?'busy':'idle'}">${busy?'● busy':'● idle'}</div>
+      <div class="a-load">load: ${a.current_load}</div>
+      <div class="a-skills">${top.map(x=>`<span class="skill ${x.s}">${x.s.slice(0,4)}</span>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+async function fetchAssignments() {
+  const d = await get('/api/assignments/active');
+  if (!d) return;
+  const list = (d.assignments||[]).slice().reverse();
+  $('assign-tag').textContent = list.length;
+  const ch = {voice:0,chat:0,email:0};
+  list.forEach(a => { if(ch[a.channel]!==undefined) ch[a.channel]++; });
+  if (chChart) { chChart.data.datasets[0].data = [ch.voice,ch.chat,ch.email]; chChart.update(); }
+  if (!list.length) return;
+  const dotColor = { voice: 'var(--a)', chat: 'rgba(255,255,255,.3)', email: 'var(--amber)' };
+  $('feed').innerHTML = list.slice(0,40).map(a => {
+    const score = typeof a.csat === 'number' ? a.csat : null;
+    const col = score >= 0.7 ? 'var(--green)' : score >= 0.5 ? 'var(--amber)' : 'var(--red)';
+    return `<div class="feed-item">
+      <div class="feed-dot" style="background:${dotColor[a.channel]||'var(--t3)'}"></div>
+      <div class="feed-body">
+        <div class="feed-pair">${a.customer_id} → ${a.agent_id}</div>
+        <div class="feed-meta">${a.channel} · batch ${a.batch_id}</div>
+      </div>
+      <div class="feed-score" style="color:${col}">${score!==null?score.toFixed(2):'—'}</div>
+    </div>`;
+  }).join('');
+}
+async function fetchHistorical() {
+  const d = await get('/api/metrics/historical');
+  if (!d || !d.data?.length) return;
+  const rows = d.data.slice(-80);
+  cvgData.labels = rows.map(r=>r.batch_id);
+  cvgData.csat   = rows.map(r=>r.avg_csat||0);
+  cvgData.sla    = rows.map(r=>r.sla_met_rate||0);
+  if (cvgChart) {
+    cvgChart.data.labels = cvgData.labels;
+    cvgChart.data.datasets[0].data = cvgData.csat;
+    cvgChart.data.datasets[1].data = cvgData.sla;
+    cvgChart.update();
+  }
+}
+async function fetchPolicies() {
+  const d = await get('/api/policies/compare');
+  if (!d || !d.policies) return;
+  const pols = d.policies, names = Object.keys(pols);
+  if (!names.length) return;
+  const dotColors = { 'CUCB-OTA':'#6472f3', 'FCFS':'rgba(255,255,255,.4)', 'Skill-Greedy':'#4ade80' };
+  const bestCSAT = Math.max(...names.map(n=>pols[n]?.avg_csat||0));
+  const bestSLA  = Math.max(...names.map(n=>pols[n]?.sla_met_rate||0));
+  const bestGini = Math.min(...names.map(n=>pols[n]?.gini||1));
+  $('policy-tbody').innerHTML = names.map(n=>{
+    const p=pols[n];
+    return `<tr>
+      <td><div class="pol-name"><div class="pol-dot" style="background:${dotColors[n]||'var(--t3)'}"></div>${n}</div></td>
+      <td class="${p.avg_csat>=bestCSAT-.001?'best-val':''}">${p.avg_csat?.toFixed(3)||'—'}</td>
+      <td class="${p.sla_met_rate>=bestSLA-.001?'best-val':''}">${p.sla_met_rate!=null?((p.sla_met_rate*100).toFixed(1)+'%'):'—'}</td>
+      <td class="${p.gini<=bestGini+.001?'best-val':''}">${p.gini?.toFixed(3)||'—'}</td>
+    </tr>`;
+  }).join('');
+  if (polChart) {
+    const order = ['CUCB-OTA','FCFS','Skill-Greedy'];
+    order.forEach((n,i)=>{
+      const p=pols[n];
+      if(p) polChart.data.datasets[i].data = [p.avg_csat||0, p.sla_met_rate||0, p.gini!=null?Math.max(0,1-p.gini):0];
+    });
+    polChart.update();
+  }
+}
+
+async function refreshAll() {
+  await Promise.all([fetchMetrics(),fetchDual(),fetchAgents(),fetchAssignments(),fetchHistorical(),fetchPolicies(),fetchConfig()]);
+}
+
+/* ── Socket.IO ──────────────────── */
+function initSocket() {
+  if (socket) {
+    try { socket.close(); } catch(e){}
+  }
+  try {
+    socket = io(API, { transports: ['websocket','polling'], timeout: 5000 });
+    socket.on('connect', () => {
+      $('live-dot').classList.add('on');
+      $('live-label').textContent = 'Connected';
+      refreshAll();
+    });
+    socket.on('disconnect', () => {
+      $('live-dot').classList.remove('on');
+      $('live-label').textContent = 'Disconnected';
+    });
+    socket.on('connect_error', () => {
+      $('live-dot').classList.remove('on');
+      $('live-label').textContent = 'API offline';
+    });
+    socket.on('metrics_update', data => {
+      updateKPIs(data);
+      if (data.batch_id !== undefined) {
+        cvgData.labels.push(data.batch_id);
+        cvgData.csat.push(data.csat||0);
+        cvgData.sla.push(data.sla_met_rate||0);
+        if (cvgData.labels.length > 80) { cvgData.labels.shift(); cvgData.csat.shift(); cvgData.sla.shift(); }
+        if (cvgChart) {
+          cvgChart.data.labels = cvgData.labels;
+          cvgChart.data.datasets[0].data = cvgData.csat;
+          cvgChart.data.datasets[1].data = cvgData.sla;
+          cvgChart.update('none');
+        }
+        logLine(`Batch ${data.batch_id} · CSAT ${data.csat?.toFixed(3)} · SLA ${(data.sla_met_rate*100)?.toFixed(1)}%`, 'log-info');
+        fetchAssignments();
+      }
+    });
+    socket.on('simulation_complete', () => {
+      logLine('Simulation complete.', 'log-ok');
+      toast('Simulation finished', 'ok');
+      setRunning(false);
+      refreshAll();
+    });
+  } catch { $('live-label').textContent = 'API offline'; }
+}
+
+/* ── Simulation ─────────────────── */
+async function startSim() {
+  const policy = $('pol-select').value;
+  const batches = parseInt($('batch-n').value)||50;
+  logLine(`Starting ${policy} — ${batches} batches`, 'log-info');
+  const r = await fetch(`${API}/api/simulation/start`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({policy, n_batches: batches})
+  }).catch(()=>null);
+  if (!r) { toast('API not reachable', 'err'); return; }
+  if (r.ok) { setRunning(true); toast(`Running ${policy}`, 'info'); }
+  else { const d = await r.json().catch(()=>{}); toast(d?.error||'Could not start', 'err'); }
+}
+async function stopSim() {
+  await fetch(`${API}/api/simulation/stop`,{method:'POST'}).catch(()=>{});
+  setRunning(false); logLine('Stopped by user.', 'log-warn');
+}
+async function quickRunSim() {
+  navTo($('nav-simulation'), 'simulation');
+  setTimeout(startSim, 100);
+}
+function setRunning(r) {
+  $('start-btn').disabled = r; $('stop-btn').disabled = !r;
+  $('btn-run').disabled = r;
+  $('btn-run').innerHTML = r
+    ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg> Running…'
+    : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Simulation';
+}
+
+function logLine(msg, cls='') {
+  const el = $('sim-log');
+  const ts = new Date().toLocaleTimeString('en',{hour12:false});
+  const div = document.createElement('div');
+  div.innerHTML = `<span class="log-ts">${ts}</span> <span class="${cls}">${msg}</span>`;
+  if (el.firstChild?.textContent === 'Waiting for simulation…') el.innerHTML = '';
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+/* ── Export CSV ─────────────────── */
+async function exportCSV(btn) {
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="spinning" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9"/></svg> Exporting…';
+  const d = await get('/api/metrics/historical');
+  btn.disabled = false; btn.innerHTML = orig;
+  if (!d?.data?.length) { toast('No data to export — run a simulation first', 'err'); return; }
+  const rows = d.data;
+  const keys = Object.keys(rows[0]);
+  const csv  = [keys.join(','), ...rows.map(r => keys.map(k => r[k]??'').join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = `sqrs_metrics_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV downloaded', 'ok');
+}
+
+/* ── Clear simulation ───────────── */
+async function clearSim(btn) {
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="spinning" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9"/></svg> Clearing…';
+  await fetch(`${API}/api/simulation/stop`,{method:'POST'}).catch(()=>{});
+  await new Promise(r=>setTimeout(r,400));
+  btn.disabled = false; btn.innerHTML = orig;
+  // Reset UI
+  ['kpi-csat','kpi-aht','kpi-sla','kpi-gini'].forEach(id => { $(id).textContent = '—'; });
+  ['kpi-csat-badge','kpi-aht-badge','kpi-sla-badge','kpi-gini-badge'].forEach(id => {
+    $(id).className = 'kpi-badge neutral'; $(id).textContent = 'awaiting data';
+  });
+  cvgData = {labels:[],csat:[],sla:[]};
+  if (cvgChart) { cvgChart.data.labels=[]; cvgChart.data.datasets.forEach(d=>d.data=[]); cvgChart.update(); }
+  $('feed').innerHTML = '<div style="color:var(--t3);font-size:12px;padding:8px 0">Cleared. Run a new simulation.</div>';
+  $('sim-log').innerHTML = 'Cleared.';
+  setRunning(false);
+  toast('Simulation data cleared', 'ok');
+}
+
+/* ── View Report ────────────────── */
+async function viewReport() {
+  const modal = $('report-modal');
+  const body  = $('modal-body');
+  modal.classList.add('open');
+  body.textContent = 'Loading report…';
+
+  try {
+    const r = await fetch(`${API}/api/report/latest`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (data && data.report && data.report.trim().length > 0) {
+      body.textContent = data.report;
+    } else {
+      body.textContent = 'No report data available.\n\nRun a simulation first, then click View Report.';
+    }
+  } catch (err) {
+    body.textContent = `Could not load report.\n\nError: ${err.message}\n\nMake sure the API server is running at ${API}.`;
+  }
+}
+function closeModal() { $('report-modal').classList.remove('open'); }
+$('report-modal').addEventListener('click', e => { if (e.target === $('report-modal')) closeModal(); });
+
+/* ── Health check ───────────────── */
+async function checkHealth() {
+  const d = await get('/api/health');
+  if (d?.status === 'ok') {
+    $('live-dot').classList.add('on');
+    $('live-label').textContent = 'API online';
+  } else {
+    $('live-label').textContent = 'API offline';
+    toast('Start api/app.py to connect', 'err', 5000);
+  }
+}
+
+/* ── Polling fallback ───────────── */
+setInterval(() => { if (!socket?.connected) { fetchMetrics(); fetchAssignments(); } }, 6000);
+
+function updateAPIUrl(val) {
+  if (!val) val = 'http://localhost:5000';
+  val = val.trim();
+  if (val.endsWith('/')) val = val.slice(0, -1);
+  localStorage.setItem('cucb_api_url', val);
+  API = val;
+  toast('API URL updated: ' + val, 'info');
+  checkHealth();
+  initSocket();
+  refreshAll();
+}
+
+/* ── Init ───────────────────────── */
+window.addEventListener('DOMContentLoaded', () => {
+  $('api-url-input').value = API;
+  initCharts();
+  checkHealth();
+  setTimeout(initSocket, 400);
+  setTimeout(refreshAll, 900);
+});
+</script>
+</body>
+</html>
