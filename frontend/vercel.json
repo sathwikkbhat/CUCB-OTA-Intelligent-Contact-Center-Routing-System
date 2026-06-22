@@ -1,4 +1,3 @@
 {
-  "cleanUrls": true,
-  "comment": "Force redeploy after Root Directory settings change"
+  "cleanUrls": true
 }
