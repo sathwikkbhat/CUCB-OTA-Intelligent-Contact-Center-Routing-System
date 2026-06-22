@@ -1,0 +1,14 @@
+# Ignore python backend files and directories for Vercel static deployment
+api/
+venv/
+data/
+evaluation/
+models/
+routing/
+simulation/
+tests/
+main.py
+config.py
+requirements.txt
+PROJECT_REPORT.md
+JUDGE_PRESENTATION.md
