@@ -64,21 +64,33 @@ CUCB-OTA shifts the routing paradigm from "who is available" to **"who will prov
 
 ---
 
-## ⚡ Vercel Deployment (Frontend)
+## 🌟 Hackathon-Grade Interactive Features (Frontend Vercel Configuration)
 
-The frontend is fully configured and optimized to be **Vercel-ready**!
+To make CUCB-OTA outstanding for evaluations and presentation, the frontend is packed with visual, interactive controls that function **with or without** the Python backend running:
 
-### How to Deploy the Frontend to Vercel:
+### 1. 📲 Mobile-Responsive Drawer Navigation
+- **Fluid layouts** adapt between widescreen monitors, tablets, and phones.
+- On mobile devices, the desktop sidebar transforms into a slide-out navigation drawer toggled by a hamburger menu, utilizing overlay backdrops and auto-closing triggers.
+- Multi-column metric grids stack vertically to prevent horizontal overflows.
 
-1.  **Connect to GitHub**: Import this repository into your Vercel Account.
-2.  **Configure Directory**: Under project settings in Vercel, set the **Root Directory** to `frontend`.
-    *   *Alternatively*, the preconfigured [vercel.json](file:///c:/Users/bhats/CUCB/vercel.json) at the root of the project will automatically route all static root traffic to the `frontend/` directory.
-3.  **Deploy**: Click **Deploy**. Vercel will host your static files globally.
+### 2. ⚡ Zero-Config Vercel Fallback (Demo Mode)
+- **Automatic failover**: The frontend checks the API connection. If the Flask backend is offline, the interface shifts to a high-fidelity **Demo Mode** with a pulsing amber warning indicator.
+- **Client-Side Simulation**: Emulates the backend routing rules, generating 30 mock agents and compiling real-time convergence graphs, SLA logs, and dual variables in pure Javascript.
+- **Seamless Recovery**: If you spin up your backend locally or host it on Render/Railway and enter the URL in the sidebar input, the frontend automatically switches off Demo Mode and connects to the live API!
 
-### Connecting to Your Backend API:
-Since the Flask server runs asynchronously with simulation threads, the frontend has a **Dynamic Backend API Input** built directly into the sidebar footer.
-*   Once deployed, enter your backend's host URL (e.g., `https://your-cucb-api.railway.app` or `http://localhost:5000`) into the **Backend API URL** field.
-*   The system will persist this setting in `localStorage` and automatically reconnect the WebSocket/REST calls.
+### 3. ⚠️ Anomalous Traffic Spike Simulator
+- A **Trigger Spike** button in the Simulation control panel simulates extreme outage workloads.
+- Incoming batch size multiplies by **350%** and requests become highly complex.
+- **FCFS** and **Skill-Greedy** baselines immediately experience severe SLA violations (SLA met falls to ~40%, AHT rises to 9+ min), whereas **CUCB-OTA's** Lagrangian dual variables spike to re-allocate tickets, keeping SLAs stable (~82%) and workload balanced (very low Gini coefficient).
+
+### 4. 🎓 Interactive Agent Profile Modals & Training Sliders
+- Click on any agent card in the **Agents** panel to open their profile drawer.
+- Displays Voice, Chat, and Email loads, CSAT metrics, and skill tags.
+- Includes **dynamic skill sliders** allowing you to "train" the agent in real time. Applying updates modifies the active simulator state; subsequent batches immediately reflect the performance benefits of your training!
+
+### 5. 📊 Visual Dashboard Reports & Text Downloader
+- Opens structured visual cards, benchmarks, and comparison tables inside the report modal.
+- Includes a **Download Report** button that generates and downloads a formatted `.txt` report file of the simulation logs.
 
 ---
 
@@ -96,7 +108,7 @@ Since the Flask server runs asynchronously with simulation threads, the frontend
 │   ├── test_api.py           # Endpoint integration tests
 │   └── README.md             # API endpoint documentation
 ├── frontend/
-│   └── index.html            # Dashboard UI (Charts, Agent Grid, Logs)
+│   └── index.html            # Premium White Dashboard (Charts, Agent Grid, Modals)
 ├── models/
 │   └── uplift_model.py       # Causal X-Learner + AHT prediction models
 ├── routing/
@@ -178,6 +190,25 @@ Tested over 150 batches (7,500 customer interactions, 30 agents):
 | **AHT Constraint (≤ 8 min)** | Met | Met | **Met (6.89 min) ✅** |
 | **SLA Target (≥ 85%)** | Breached | Met | **Met (91.2%) ✅** |
 | **Fairness Gini (≤ 0.3)** | Breached | Breached | **Met (0.234) ✅** |
+
+---
+
+## 🔬 Algorithm & Mathematical Details
+
+### 1. Routing Score Formula
+The assignment matches customers to agents by maximizing the routing score $RS(c,a)$:
+$$RS(c, a) = \tau(c, a) - \lambda_1 \cdot \text{AHT}(c,a) - \lambda_2 \cdot \text{SLA\_risk}(c,a) - \lambda_3 \cdot \text{Fairness}(a)$$
+
+Where:
+*   $\tau(c, a)$: Predicted CSAT uplift calculated using X-Learner.
+*   $\lambda_1, \lambda_2, \lambda_3$: Lagrangian multipliers that adjust adaptively based on constraint violations.
+*   $\text{Fairness}(a)$: Current agent load penalty calculated to balance assignments.
+
+### 2. Dual Update Rule
+Lagrangian dual variables tune themselves after each batch step:
+$$\lambda_i \leftarrow \max(0, \lambda_i + \eta \cdot (\text{constraint\_violation} - \text{budget}))$$
+
+Where $\eta$ represents the optimization learning rate. If violations exceed target budgets, $\lambda$ rises to penalize violating decisions in subsequent rounds.
 
 ---
 
