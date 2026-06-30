@@ -417,25 +417,104 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
 .tag-g { background: var(--green-dim); color: var(--green); }
 .tag-r { background: var(--red-dim); color: var(--red); }
 
-@media (max-width: 1100px) { .g4 { grid-template-columns: repeat(2,1fr); } }
-@media (max-width: 780px)  { .sidebar { display: none; } .g4,.g3,.g2 { grid-template-columns: 1fr; } .row { flex-direction: column; } }
+/* Drawer overlay direct child of body */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 140;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.drawer-overlay.open {
+  display: block;
+  opacity: 1;
+}
+
+/* Custom warning state for live indicator dot */
+.live-dot.warning { background: var(--amber); }
+.live-dot.warning::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--amber);
+  animation: ripple-warn 1.8s ease-out infinite;
+  opacity: .5;
+}
+@keyframes ripple-warn { 0% { transform: scale(1); opacity: .5; } 100% { transform: scale(2.2); opacity: 0; } }
+
+@media (max-width: 1100px) {
+  .g4 { grid-template-columns: repeat(2,1fr); }
+}
+
+@media (max-width: 780px) {
+  .shell { flex-direction: column; height: 100vh; overflow: hidden; }
+  
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 250px;
+    height: 100%;
+    z-index: 150;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 20px 0 50px rgba(0,0,0,0.8);
+    display: flex !important;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  
+  .main { height: calc(100vh - 52px); overflow-y: auto; }
+  
+  .topbar { padding: 0 16px; }
+  .menu-btn { display: flex !important; }
+  .sb-close-btn { display: block !important; }
+  
+  /* Stack columns in rows */
+  .row { flex-direction: column; gap: 12px; }
+  .col-l, .col-r { width: 100%; flex: none; }
+  
+  /* Grid conversions */
+  .g4, .g3, .g2 { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+  
+  /* Hide text in some buttons on mobile to save space */
+  .topbar-actions .btn span { display: none; }
+}
+
+@media (max-width: 480px) {
+  .g4, .g3, .g2 { grid-template-columns: 1fr !important; }
+  .topbar-left { gap: 6px; }
+  .topbar-breadcrumb { font-size: 11px; }
+  .topbar-sep { font-size: 10px; margin: 0; }
+  .topbar-title { font-size: 11px; }
+  .ph h1 { font-size: 16px; }
+  .ph p { font-size: 11px; }
+}
 </style>
 </head>
 <body>
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeSidebar()"></div>
 <div class="shell">
 
 <!-- ── Sidebar ── -->
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
   <div class="sb-logo">
     <div class="sb-mark">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
       </svg>
     </div>
-    <div>
+    <div style="flex: 1;">
       <div class="sb-name">SQRS</div>
       <div class="sb-sub">CUCB-OTA Engine</div>
     </div>
+    <button class="sb-close-btn" onclick="closeSidebar()" style="display: none; background: none; border: none; color: var(--t2); cursor: pointer; font-size: 16px; padding: 4px; line-height: 1;">✕</button>
   </div>
 
   <nav class="sb-nav">
@@ -479,7 +558,14 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
 
   <!-- Topbar -->
   <header class="topbar">
-    <div class="topbar-left">
+    <div class="topbar-left" style="display: flex; align-items: center;">
+      <button class="menu-btn" onclick="toggleSidebar()" style="display: none; align-items: center; justify-content: center; background: none; border: none; color: var(--t1); cursor: pointer; padding: 4px; margin-right: 8px; line-height: 1;">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
       <span class="topbar-breadcrumb">SQRS</span>
       <span class="topbar-sep">/</span>
       <span class="topbar-title" id="page-label">Overview</span>
@@ -487,15 +573,15 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
     <div class="topbar-actions">
       <button class="btn btn-default" id="btn-clear" onclick="clearSim(this)" title="Reset all simulation data">
         <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg>
-        Clear
+        <span>Clear</span>
       </button>
       <button class="btn btn-default" id="btn-report" onclick="viewReport()" title="View full simulation report">
         <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        View Report
+        <span>View Report</span>
       </button>
       <button class="btn btn-primary" id="btn-run" onclick="quickRunSim()">
         <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Run Simulation
+        <span>Run Simulation</span>
       </button>
     </div>
   </header>
@@ -732,6 +818,347 @@ let socket = null, prevMetrics = null;
 let cvgData = { labels: [], csat: [], sla: [] };
 let cvgChart = null, polChart = null, chChart = null;
 
+/* ── Demo Mode & Mobile Drawer State ────────────────────────── */
+let demoMode = false;
+let demoAgents = [];
+let demoAssignments = [];
+let demoRunning = false;
+let demoPolicy = 'CUCB-OTA';
+let demoBatchesTotal = 50;
+let demoBatchCurrent = 0;
+let demoHistoricalData = [];
+let demoIntervalId = null;
+let demoDual = { lambda_aht: 0.1, lambda_sla: 0.1, lambda_fairness: 0.1 };
+let demoMetrics = { csat: 0, aht: 0, sla_met_rate: 0, gini: 0, total_assignments: 0 };
+let demoPolicyRuns = {
+  'CUCB-OTA': { avg_csat: 0.854, sla_met_rate: 0.915, gini: 0.182, total_assignments: 2450 },
+  'FCFS': { avg_csat: 0.682, sla_met_rate: 0.778, gini: 0.284, total_assignments: 2500 },
+  'Skill-Greedy': { avg_csat: 0.776, sla_met_rate: 0.832, gini: 0.381, total_assignments: 2480 }
+};
+
+/* Sidebar mobile drawer functions */
+function toggleSidebar() {
+  $('sidebar').classList.toggle('open');
+  $('drawer-overlay').classList.toggle('open');
+}
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  $('drawer-overlay').classList.remove('open');
+}
+
+function initDemoAgents() {
+  if (demoAgents.length > 0) return;
+  demoAgents = [];
+  const skills = ['technical','billing','sales','general','vip'];
+  const skillLevels = ['junior', 'mid', 'senior', 'expert'];
+  for (let i = 0; i < 30; i++) {
+    const primary = skills[Math.floor(Math.random() * skills.length)];
+    const skillLevel = skillLevels[Math.floor(Math.random() * skillLevels.length)];
+    const agSkills = {};
+    skills.forEach(s => {
+      agSkills[s] = s === primary ? 0.7 + Math.random() * 0.3 : Math.random() * 0.4;
+    });
+    demoAgents.push({
+      agent_id: `A${String(i).padStart(3, '0')}`,
+      name: `Agent A${String(i).padStart(3, '0')}`,
+      status: 'available',
+      current_load: 0,
+      channel_loads: { voice: 0, chat: 0, email: 0 },
+      capacity: { voice: 1, chat: 3, email: 5 },
+      skills: agSkills,
+      avg_csat: 0.6 + Math.random() * 0.35,
+      avg_aht: 4 + Math.random() * 8,
+      experience_years: 0.5 + Math.random() * 9.5
+    });
+  }
+}
+
+function handleDemoGet(path) {
+  if (path === '/api/config') {
+    return {
+      num_agents: 30,
+      num_customers_per_batch: 50,
+      channels: ['voice', 'chat', 'email'],
+      skills: ['technical', 'billing', 'sales', 'general', 'vip'],
+      capacity_rules: { voice: 1, chat: 3, email: 5 },
+      max_aht_minutes: 8.0,
+      max_sla_violation_rate: 0.15,
+      fairness_gini_threshold: 0.3
+    };
+  }
+  if (path === '/api/metrics/current') {
+    return {
+      csat: demoMetrics.csat,
+      aht: demoMetrics.aht,
+      sla_met_rate: demoMetrics.sla_met_rate,
+      gini: demoMetrics.gini,
+      throughput: demoMetrics.total_assignments,
+      total_assignments: demoMetrics.total_assignments
+    };
+  }
+  if (path === '/api/metrics/historical') {
+    return { data: demoHistoricalData };
+  }
+  if (path === '/api/agents') {
+    initDemoAgents();
+    return { agents: demoAgents };
+  }
+  if (path === '/api/assignments/active') {
+    return { assignments: demoAssignments };
+  }
+  if (path === '/api/constraints/dual') {
+    return demoDual;
+  }
+  if (path === '/api/policies/compare') {
+    return { policies: demoPolicyRuns };
+  }
+  if (path === '/api/report/latest') {
+    return { report: getDemoReport(), source: 'demo_live' };
+  }
+  return null;
+}
+
+function getDemoReport() {
+  const ota = demoPolicyRuns['CUCB-OTA'];
+  const fcfs = demoPolicyRuns['FCFS'];
+  const greedy = demoPolicyRuns['Skill-Greedy'];
+  
+  return `================================================================================
+               SMART QUEUE ROUTING SYSTEM - DEMO RUN REPORT
+================================================================================
+
+DEMO RUN SUMMARY:
+----------------------------------------
+Active Policy     : ${demoPolicy}
+Batches Run       : ${demoBatchCurrent} of ${demoBatchesTotal}
+Total Assignments : ${demoMetrics.total_assignments}
+Final Avg CSAT    : ${demoMetrics.csat.toFixed(4)}
+Final Avg AHT     : ${demoMetrics.aht.toFixed(2)} min
+Final SLA Met Rate: ${(demoMetrics.sla_met_rate*100).toFixed(1)}%
+Fairness (Gini)   : ${demoMetrics.gini.toFixed(4)}
+
+POLICY COMPARISON (DEMO DATA):
+----------------------------------------
+CUCB-OTA:
+  Total Assignments : ${ota.total_assignments}
+  Avg CSAT          : ${ota.avg_csat.toFixed(4)}
+  Avg AHT           : 6.22 min
+  SLA Met Rate      : ${(ota.sla_met_rate*100).toFixed(1)}%
+  Fairness (Gini)   : ${ota.gini.toFixed(4)}
+
+FCFS Baseline:
+  Total Assignments : ${fcfs.total_assignments}
+  Avg CSAT          : ${fcfs.avg_csat.toFixed(4)}
+  Avg AHT           : 8.10 min
+  SLA Met Rate      : ${(fcfs.sla_met_rate*100).toFixed(1)}%
+  Fairness (Gini)   : ${fcfs.gini.toFixed(4)}
+
+Skill-Greedy:
+  Total Assignments : ${greedy.total_assignments}
+  Avg CSAT          : ${greedy.avg_csat.toFixed(4)}
+  Avg AHT           : 6.95 min
+  SLA Met Rate      : ${(greedy.sla_met_rate*100).toFixed(1)}%
+  Fairness (Gini)   : ${greedy.gini.toFixed(4)}
+
+SYSTEM CONFIGURATION:
+----------------------------------------
+Number of Agents  : 30
+Channels          : Voice (cap: 1), Chat (cap: 3), Email (cap: 5)
+Constraint Budgets: AHT <= 8.0 min, SLA >= 85%, Gini <= 0.30
+
+ALGORITHM DETAILS:
+----------------------------------------
+Policy            : Causal Uplift Contextual Bandit + Optimal Transport Assignment
+Backbone Model    : LightGBM Uplift + XGBoost Capacity Models (Emulated in Demo Mode)
+Optimization      : Lagrangian dual variable adjustments (lambda_aht, lambda_sla, lambda_fairness)
+================================================================================`;
+}
+
+function startDemoSimulation(policy, batches) {
+  demoRunning = true;
+  demoPolicy = policy;
+  demoBatchesTotal = batches;
+  demoBatchCurrent = 0;
+  demoHistoricalData = [];
+  demoAssignments = [];
+  
+  initDemoAgents();
+  demoAgents.forEach(a => {
+    a.current_load = 0;
+    a.status = 'available';
+    a.channel_loads = { voice: 0, chat: 0, email: 0 };
+  });
+  
+  setRunning(true);
+  toast(`Running ${policy} (Demo)`, 'info');
+  
+  demoIntervalId = setInterval(() => {
+    if (demoBatchCurrent >= demoBatchesTotal || !demoRunning) {
+      stopDemoSimulation();
+      logLine('Simulation complete (Demo).', 'log-ok');
+      toast('Simulation finished', 'ok');
+      setRunning(false);
+      
+      // Update policy run comparisons
+      demoPolicyRuns[demoPolicy] = {
+        avg_csat: demoMetrics.csat,
+        sla_met_rate: demoMetrics.sla_met_rate,
+        gini: demoMetrics.gini,
+        total_assignments: demoMetrics.total_assignments
+      };
+      
+      refreshAll();
+      return;
+    }
+    
+    simulateDemoBatchStep();
+    demoBatchCurrent++;
+  }, 120);
+}
+
+function simulateDemoBatchStep() {
+  let targetCSAT, targetAHT, targetSLA, targetGini;
+  if (demoPolicy === 'CUCB-OTA') {
+    targetCSAT = 0.85; targetAHT = 6.2; targetSLA = 0.92; targetGini = 0.18;
+  } else if (demoPolicy === 'FCFS') {
+    targetCSAT = 0.68; targetAHT = 8.1; targetSLA = 0.78; targetGini = 0.28;
+  } else {
+    targetCSAT = 0.78; targetAHT = 6.9; targetSLA = 0.83; targetGini = 0.38;
+  }
+  
+  const alpha = 0.15;
+  if (demoBatchCurrent === 0) {
+    demoMetrics.csat = targetCSAT + (Math.random() - 0.5) * 0.05;
+    demoMetrics.aht = targetAHT + (Math.random() - 0.5) * 0.5;
+    demoMetrics.sla_met_rate = targetSLA + (Math.random() - 0.5) * 0.05;
+    demoMetrics.gini = targetGini + (Math.random() - 0.5) * 0.03;
+    demoMetrics.total_assignments = 0;
+  } else {
+    demoMetrics.csat = demoMetrics.csat * (1 - alpha) + targetCSAT * alpha + (Math.random() - 0.5) * 0.02;
+    demoMetrics.aht = demoMetrics.aht * (1 - alpha) + targetAHT * alpha + (Math.random() - 0.5) * 0.15;
+    demoMetrics.sla_met_rate = demoMetrics.sla_met_rate * (1 - alpha) + targetSLA * alpha + (Math.random() - 0.5) * 0.02;
+    demoMetrics.gini = demoMetrics.gini * (1 - alpha) + targetGini * alpha + (Math.random() - 0.5) * 0.01;
+  }
+  demoMetrics.csat = Math.max(0, Math.min(1, demoMetrics.csat));
+  demoMetrics.sla_met_rate = Math.max(0, Math.min(1, demoMetrics.sla_met_rate));
+  demoMetrics.gini = Math.max(0, Math.min(1, demoMetrics.gini));
+  
+  const batchAssignmentsCount = 5 + Math.floor(Math.random() * 6);
+  demoMetrics.total_assignments += batchAssignmentsCount;
+  
+  if (demoPolicy === 'CUCB-OTA') {
+    demoDual.lambda_aht = Math.max(0, 0.05 + Math.sin(demoBatchCurrent * 0.1) * 0.02 + Math.random() * 0.01);
+    demoDual.lambda_sla = Math.max(0, 0.12 - demoBatchCurrent * 0.001 + Math.random() * 0.01);
+    demoDual.lambda_fairness = Math.max(0, 0.22 - demoBatchCurrent * 0.002 + Math.random() * 0.015);
+  } else {
+    demoDual.lambda_aht = 0.15 + Math.random() * 0.05;
+    demoDual.lambda_sla = 0.25 + Math.random() * 0.05;
+    demoDual.lambda_fairness = 0.35 + Math.random() * 0.05;
+  }
+  
+  demoAgents.forEach(a => {
+    a.current_load = 0;
+    a.status = 'available';
+    a.channel_loads = { voice: 0, chat: 0, email: 0 };
+  });
+  
+  const channels = ['voice', 'chat', 'email'];
+  for (let j = 0; j < batchAssignmentsCount; j++) {
+    const agentIndex = Math.floor(Math.random() * demoAgents.length);
+    const agent = demoAgents[agentIndex];
+    const channel = channels[Math.floor(Math.random() * channels.length)];
+    agent.current_load += 1;
+    agent.channel_loads[channel] += 1;
+    agent.status = 'busy';
+    
+    const csatOutcome = demoMetrics.csat + (Math.random() - 0.5) * 0.3;
+    const ahtOutcome = demoMetrics.aht + (Math.random() - 0.5) * 4;
+    const customerId = `C${String(demoMetrics.total_assignments + j).padStart(4, '0')}`;
+    
+    const assignmentObj = {
+      customer_id: customerId,
+      agent_id: agent.agent_id,
+      channel: channel,
+      batch_id: demoBatchCurrent,
+      csat: Math.max(0, Math.min(1, csatOutcome)),
+      aht: Math.max(0.5, ahtOutcome),
+      sla_met: ahtOutcome < (channel === 'voice' ? 5 : channel === 'chat' ? 3 : 60)
+    };
+    demoAssignments.push(assignmentObj);
+  }
+  
+  if (demoAssignments.length > 50) {
+    demoAssignments = demoAssignments.slice(-50);
+  }
+  
+  demoHistoricalData.push({
+    batch_id: demoBatchCurrent,
+    avg_csat: demoMetrics.csat,
+    avg_aht: demoMetrics.aht,
+    sla_met_rate: demoMetrics.sla_met_rate,
+    gini_coefficient: demoMetrics.gini,
+    n_assignments: batchAssignmentsCount
+  });
+  
+  updateKPIs({
+    csat: demoMetrics.csat,
+    aht: demoMetrics.aht,
+    sla_met_rate: demoMetrics.sla_met_rate,
+    gini: demoMetrics.gini,
+    total_assignments: demoMetrics.total_assignments
+  });
+  
+  cvgData.labels.push(demoBatchCurrent);
+  cvgData.csat.push(demoMetrics.csat);
+  cvgData.sla.push(demoMetrics.sla_met_rate);
+  if (cvgData.labels.length > 80) { cvgData.labels.shift(); cvgData.csat.shift(); cvgData.sla.shift(); }
+  if (cvgChart) {
+    cvgChart.data.labels = cvgData.labels;
+    cvgChart.data.datasets[0].data = cvgData.csat;
+    cvgChart.data.datasets[1].data = cvgData.sla;
+    cvgChart.update('none');
+  }
+  
+  logLine(`Batch ${demoBatchCurrent} · CSAT ${demoMetrics.csat.toFixed(3)} · SLA ${(demoMetrics.sla_met_rate*100).toFixed(1)}%`, 'log-info');
+  
+  fetchAssignments();
+  fetchAgents();
+  fetchDual();
+}
+
+function stopDemoSimulation() {
+  demoRunning = false;
+  if (demoIntervalId) {
+    clearInterval(demoIntervalId);
+    demoIntervalId = null;
+  }
+}
+
+function clearDemoSimulation(btn) {
+  stopDemoSimulation();
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg> <span>Clear</span>';
+    
+    ['kpi-csat','kpi-aht','kpi-sla','kpi-gini'].forEach(id => { $(id).textContent = '—'; });
+    ['kpi-csat-badge','kpi-aht-badge','kpi-sla-badge','kpi-gini-badge'].forEach(id => {
+      $(id).className = 'kpi-badge neutral'; $(id).textContent = 'awaiting data';
+    });
+    
+    cvgData = {labels:[],csat:[],sla:[]};
+    if (cvgChart) { cvgChart.data.labels=[]; cvgChart.data.datasets.forEach(d=>d.data=[]); cvgChart.update(); }
+    $('feed').innerHTML = '<div style="color:var(--t3);font-size:12px;padding:8px 0">Cleared. Run a new simulation.</div>';
+    $('sim-log').innerHTML = 'Cleared.';
+    setRunning(false);
+    
+    demoMetrics = { csat: 0, aht: 0, sla_met_rate: 0, gini: 0, total_assignments: 0 };
+    demoAssignments = [];
+    demoHistoricalData = [];
+    
+    toast('Simulation data cleared', 'ok');
+  }, 400);
+}
+
 /* ── Toast ─────────────────────── */
 function toast(msg, type='info', dur=3000) {
   const icons = { ok:'✓', err:'✕', info:'·' };
@@ -749,6 +1176,7 @@ function navTo(el, id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   $('section-'+id).classList.add('active');
   $('page-label').textContent = id.charAt(0).toUpperCase() + id.slice(1);
+  closeSidebar();
 }
 
 /* ── Charts ─────────────────────── */
@@ -832,6 +1260,10 @@ function initCharts() {
 
 /* ── Fetch helpers ──────────────── */
 async function get(path) {
+  if (demoMode) {
+    const demoVal = handleDemoGet(path);
+    if (demoVal !== null) return demoVal;
+  }
   try { const r = await fetch(API + path); return r.ok ? r.json() : null; }
   catch { return null; }
 }
@@ -997,23 +1429,33 @@ async function refreshAll() {
 
 /* ── Socket.IO ──────────────────── */
 function initSocket() {
+  if (demoMode) {
+    if (socket) {
+      try { socket.close(); } catch(e){}
+    }
+    return;
+  }
   if (socket) {
     try { socket.close(); } catch(e){}
   }
   try {
     socket = io(API, { transports: ['websocket','polling'], timeout: 5000 });
     socket.on('connect', () => {
-      $('live-dot').classList.add('on');
-      $('live-label').textContent = 'Connected';
+      $('live-dot').className = 'live-dot on';
+      $('live-label').textContent = 'API online';
       refreshAll();
     });
     socket.on('disconnect', () => {
-      $('live-dot').classList.remove('on');
-      $('live-label').textContent = 'Disconnected';
+      if (!demoMode) {
+        $('live-dot').className = 'live-dot';
+        $('live-label').textContent = 'Disconnected';
+      }
     });
     socket.on('connect_error', () => {
-      $('live-dot').classList.remove('on');
-      $('live-label').textContent = 'API offline';
+      if (!demoMode) {
+        $('live-dot').className = 'live-dot';
+        $('live-label').textContent = 'API offline';
+      }
     });
     socket.on('metrics_update', data => {
       updateKPIs(data);
@@ -1046,6 +1488,10 @@ async function startSim() {
   const policy = $('pol-select').value;
   const batches = parseInt($('batch-n').value)||50;
   logLine(`Starting ${policy} — ${batches} batches`, 'log-info');
+  if (demoMode) {
+    startDemoSimulation(policy, batches);
+    return;
+  }
   const r = await fetch(`${API}/api/simulation/start`, {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({policy, n_batches: batches})
@@ -1055,6 +1501,11 @@ async function startSim() {
   else { const d = await r.json().catch(()=>{}); toast(d?.error||'Could not start', 'err'); }
 }
 async function stopSim() {
+  if (demoMode) {
+    stopDemoSimulation();
+    setRunning(false); logLine('Stopped by user.', 'log-warn');
+    return;
+  }
   await fetch(`${API}/api/simulation/stop`,{method:'POST'}).catch(()=>{});
   setRunning(false); logLine('Stopped by user.', 'log-warn');
 }
@@ -1066,8 +1517,8 @@ function setRunning(r) {
   $('start-btn').disabled = r; $('stop-btn').disabled = !r;
   $('btn-run').disabled = r;
   $('btn-run').innerHTML = r
-    ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg> Running…'
-    : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Simulation';
+    ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg> <span>Running…</span>'
+    : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> <span>Run Simulation</span>';
 }
 
 function logLine(msg, cls='') {
@@ -1084,7 +1535,7 @@ function logLine(msg, cls='') {
 async function exportCSV(btn) {
   const orig = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<svg class="spinning" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9"/></svg> Exporting…';
+  btn.innerHTML = '<svg class="spinning" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9"/></svg> <span>Exporting…</span>';
   const d = await get('/api/metrics/historical');
   btn.disabled = false; btn.innerHTML = orig;
   if (!d?.data?.length) { toast('No data to export — run a simulation first', 'err'); return; }
@@ -1100,9 +1551,13 @@ async function exportCSV(btn) {
 
 /* ── Clear simulation ───────────── */
 async function clearSim(btn) {
+  if (demoMode) {
+    clearDemoSimulation(btn);
+    return;
+  }
   const orig = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<svg class="spinning" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9"/></svg> Clearing…';
+  btn.innerHTML = '<svg class="spinning" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9"/></svg> <span>Clearing…</span>';
   await fetch(`${API}/api/simulation/stop`,{method:'POST'}).catch(()=>{});
   await new Promise(r=>setTimeout(r,400));
   btn.disabled = false; btn.innerHTML = orig;
@@ -1126,6 +1581,11 @@ async function viewReport() {
   modal.classList.add('open');
   body.textContent = 'Loading report…';
 
+  if (demoMode) {
+    body.textContent = getDemoReport();
+    return;
+  }
+
   try {
     const r = await fetch(`${API}/api/report/latest`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -1144,13 +1604,30 @@ $('report-modal').addEventListener('click', e => { if (e.target === $('report-mo
 
 /* ── Health check ───────────────── */
 async function checkHealth() {
-  const d = await get('/api/health');
-  if (d?.status === 'ok') {
-    $('live-dot').classList.add('on');
-    $('live-label').textContent = 'API online';
-  } else {
-    $('live-label').textContent = 'API offline';
-    toast('Start api/app.py to connect', 'err', 5000);
+  try {
+    const r = await fetch(API + '/api/health').catch(() => null);
+    if (r && r.ok) {
+      const d = await r.json().catch(() => null);
+      if (d?.status === 'ok') {
+        if (demoMode) {
+          demoMode = false;
+          stopDemoSimulation();
+          toast('Connected to Backend API!', 'ok');
+        }
+        $('live-dot').className = 'live-dot on';
+        $('live-label').textContent = 'API online';
+        return;
+      }
+    }
+  } catch(e) {}
+
+  if (!demoMode) {
+    demoMode = true;
+    initDemoAgents();
+    $('live-dot').className = 'live-dot warning';
+    $('live-label').textContent = 'Demo Mode';
+    toast('API offline. Switched to Demo Mode.', 'info');
+    refreshAll();
   }
 }
 
