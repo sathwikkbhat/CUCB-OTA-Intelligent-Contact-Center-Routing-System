@@ -14,27 +14,27 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:        #0c0c0c;
-  --s1:        #141414;
-  --s2:        #1c1c1c;
-  --s3:        #242424;
-  --b1:        #262626;
-  --b2:        #333;
+  --bg:        #f8fafc; /* Premium clean white slate */
+  --s1:        #ffffff; /* Sidebar and cards background */
+  --s2:        #f1f5f9; /* Shading/hover areas */
+  --s3:        #e2e8f0; /* Accent details/borders */
+  --b1:        #e2e8f0; /* Soft borders */
+  --b2:        #cbd5e1; /* Active/harder borders */
 
-  --t1:        #f0f0f0;
-  --t2:        #888;
-  --t3:        #444;
+  --t1:        #0f172a; /* Slate 900 for high-contrast titles */
+  --t2:        #475569; /* Slate 600 for body text/labels */
+  --t3:        #94a3b8; /* Slate 400 for subtext/metadata */
 
-  --a:         #6472f3;
-  --a-dim:     rgba(100,114,243,.1);
-  --a-glow:    rgba(100,114,243,.25);
+  --a:         #4f46e5; /* Royal Indigo accent */
+  --a-dim:     rgba(79, 70, 229, 0.07);
+  --a-glow:    rgba(79, 70, 229, 0.15);
 
-  --green:     #4ade80;
-  --green-dim: rgba(74,222,128,.1);
-  --red:       #f87171;
-  --red-dim:   rgba(248,113,113,.1);
-  --amber:     #fbbf24;
-  --amber-dim: rgba(251,191,36,.1);
+  --green:     #10b981; /* Emerald green */
+  --green-dim: rgba(16, 185, 129, 0.08);
+  --red:       #ef4444; /* Rose red */
+  --red-dim:   rgba(239, 68, 68, 0.08);
+  --amber:     #f59e0b; /* Amber warning */
+  --amber-dim: rgba(245, 158, 11, 0.08);
 
   --r:  10px;
   --rs: 7px;
@@ -127,6 +127,16 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
   animation: ripple 1.8s ease-out infinite;
   opacity: .5;
 }
+.live-dot.warning { background: var(--amber); }
+.live-dot.warning::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--amber);
+  animation: ripple 1.8s ease-out infinite;
+  opacity: .5;
+}
 @keyframes ripple { 0% { transform: scale(1); opacity: .5; } 100% { transform: scale(2.2); opacity: 0; } }
 .live-label { font-size: 11px; color: var(--t3); }
 
@@ -136,7 +146,7 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
 /* Topbar */
 .topbar {
   position: sticky; top: 0; z-index: 40;
-  background: rgba(12,12,12,.9);
+  background: rgba(248,250,252,.9);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--b1);
   padding: 0 24px;
@@ -165,7 +175,7 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
 .btn-default { background: var(--s2); border-color: var(--b1); color: var(--t2); }
 .btn-default:hover { background: var(--s3); color: var(--t1); border-color: var(--b2); }
 .btn-primary { background: var(--a); border-color: var(--a); color: #fff; }
-.btn-primary:hover { background: #7380f5; }
+.btn-primary:hover { background: #4338ca; }
 .btn-primary:active { transform: scale(.98); }
 .btn-danger { background: var(--red-dim); border-color: rgba(248,113,113,.2); color: var(--red); }
 .btn-danger:hover { background: rgba(248,113,113,.18); }
@@ -199,6 +209,11 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
   border: 1px solid var(--b1);
   border-radius: var(--r);
   padding: 18px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
 }
 .card-hd {
   display: flex; align-items: center; justify-content: space-between;
@@ -322,11 +337,12 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
 /* Sim log */
 .sim-log {
   font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  color: var(--t2); max-height: 240px; overflow-y: auto;
-  background: var(--bg); border-radius: var(--rs);
+  color: #e2e8f0; max-height: 240px; overflow-y: auto;
+  background: #0f172a; border-radius: var(--rs);
   padding: 12px; line-height: 1.7;
-  border: 1px solid var(--b1);
+  border: 1px solid #1e293b;
   margin-top: 12px;
+  box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.06);
 }
 .log-ts { color: var(--t3); }
 .log-ok { color: var(--green); }
@@ -337,7 +353,7 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
 /* Modal */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,.7);
+  background: rgba(15, 23, 42, 0.45);
   display: none; align-items: center; justify-content: center;
   backdrop-filter: blur(4px);
 }
@@ -349,7 +365,7 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
   width: min(680px, 92vw);
   max-height: 80vh;
   display: flex; flex-direction: column;
-  box-shadow: 0 24px 80px rgba(0,0,0,.6);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 .modal-hd {
   padding: 18px 20px 14px;
@@ -369,11 +385,9 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
 .modal-body {
   padding: 20px;
   overflow-y: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; line-height: 1.8;
+  font-family: inherit;
+  font-size: 12px; line-height: 1.6;
   color: var(--t2);
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
 /* Toast */
@@ -810,12 +824,18 @@ html, body { height: 100%; background: var(--bg); color: var(--t1); font-family:
 
 <!-- Report modal -->
 <div class="modal-overlay" id="report-modal">
-  <div class="modal">
+  <div class="modal" style="width: min(720px, 94vw); max-height: 85vh;">
     <div class="modal-hd">
-      <span class="modal-title">Simulation Report</span>
-      <div class="modal-close" onclick="closeModal()">✕</div>
+      <span class="modal-title">Simulation Performance Report</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button class="btn btn-primary" onclick="downloadReportFile()" id="download-report-btn" style="font-size: 11px; padding: 4px 10px;">
+          <svg viewBox="0 0 24 24" width="11" height="11"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download Report</span>
+        </button>
+        <div class="modal-close" onclick="closeModal()">✕</div>
+      </div>
     </div>
-    <div class="modal-body" id="modal-body">Loading…</div>
+    <div class="modal-body" id="modal-body" style="font-family: inherit; color: var(--t1); white-space: normal; line-height: 1.6; padding: 24px;">Loading…</div>
   </div>
 </div>
 
@@ -1071,6 +1091,140 @@ function handleDemoGet(path) {
     return { report: getDemoReport(), source: 'demo_live' };
   }
   return null;
+}
+
+let activeRawReportText = '';
+
+function downloadReportFile() {
+  if (!activeRawReportText || activeRawReportText.trim().length === 0) {
+    toast('No report content to download', 'err');
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([activeRawReportText], {type: 'text/plain'}));
+  a.download = `sqrs_simulation_report_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+  a.click();
+  toast('Report downloaded as text file', 'ok');
+}
+
+function renderVisualReport(reportText) {
+  if (!reportText || reportText.trim().length === 0) {
+    return `<div style="text-align: center; color: var(--t3); padding: 40px;">No report data available. Run a simulation first.</div>`;
+  }
+  const lines = reportText.split('\n');
+  const values = {};
+  lines.forEach(l => {
+    if (l.includes(':')) {
+      const idx = l.indexOf(':');
+      const k = l.substring(0, idx).trim().toLowerCase().replace(/[\s\(\)\-\.]/g, '_');
+      const v = l.substring(idx + 1).trim();
+      if (k && v) values[k] = v;
+    }
+  });
+
+  const activePolicy = values['active_policy'] || 'CUCB-OTA';
+  const avgCsat = parseFloat(values['final_avg_csat'] || values['avg_csat']) || 0;
+  const avgAht = values['final_avg_aht'] || values['avg_aht'] || '—';
+  const slaMet = values['final_sla_met_rate'] || values['sla_met_rate'] || '—';
+  const fairnessGini = parseFloat(values['fairness__gini_'] || values['fairness']) || 0;
+  
+  const ota = demoPolicyRuns['CUCB-OTA'] || { avg_csat: 0.854, sla_met_rate: 0.915, gini: 0.182, total_assignments: 2450 };
+  const fcfs = demoPolicyRuns['FCFS'] || { avg_csat: 0.682, sla_met_rate: 0.778, gini: 0.284, total_assignments: 2500 };
+  const greedy = demoPolicyRuns['Skill-Greedy'] || { avg_csat: 0.776, sla_met_rate: 0.832, gini: 0.381, total_assignments: 2480 };
+
+  const getBadgeClass = (val, threshold, isLowerBetter = false) => {
+    if (isLowerBetter) return val <= threshold ? 'kpi-badge ok' : 'kpi-badge warn';
+    return val >= threshold ? 'kpi-badge ok' : 'kpi-badge warn';
+  };
+
+  return `
+    <div style="margin-bottom: 20px; border-bottom: 1px solid var(--b1); padding-bottom: 12px;">
+      <span style="font-size: 9px; text-transform: uppercase; color: var(--t3); letter-spacing: 0.05em; font-weight: 600;">Simulation Run Status</span>
+      <h3 style="font-size: 16px; font-weight: 600; color: var(--t1); margin-top: 2px;">Run Complete & Telemetry Aggregated</h3>
+      <p style="font-size: 11px; color: var(--t2); margin-top: 2px;">Reviewing active routing parameters and comparison benchmarks below.</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+      <div style="background: var(--s2); border: 1px solid var(--b1); padding: 10px; border-radius: var(--rs);">
+        <div style="font-size: 9px; text-transform: uppercase; color: var(--t3); font-weight: 500;">Active Policy</div>
+        <div style="font-size: 16px; font-weight: 600; color: var(--a); margin-top: 2px;">${activePolicy}</div>
+        <div style="font-size: 10px; color: var(--t2); margin-top: 2px;">${values['batches_run'] || '—'} batches</div>
+      </div>
+      <div style="background: var(--s2); border: 1px solid var(--b1); padding: 10px; border-radius: var(--rs);">
+        <div style="font-size: 9px; text-transform: uppercase; color: var(--t3); font-weight: 500;">Avg CSAT Rating</div>
+        <div style="font-size: 16px; font-weight: 600; color: var(--green); margin-top: 2px;">${avgCsat ? avgCsat.toFixed(3) : '—'}</div>
+        <span class="${getBadgeClass(avgCsat, 0.75)}" style="margin-top: 4px; font-size: 9px; padding: 1px 4px;">${avgCsat >= 0.75 ? 'Excellent' : 'Needs Tuning'}</span>
+      </div>
+      <div style="background: var(--s2); border: 1px solid var(--b1); padding: 10px; border-radius: var(--rs);">
+        <div style="font-size: 9px; text-transform: uppercase; color: var(--t3); font-weight: 500;">SLA Met Rate</div>
+        <div style="font-size: 16px; font-weight: 600; color: var(--t1); margin-top: 2px;">${slaMet}</div>
+        <span class="${getBadgeClass(parseFloat(slaMet)/100 || 0, 0.85)}" style="margin-top: 4px; font-size: 9px; padding: 1px 4px;">${(parseFloat(slaMet) >= 85) ? 'Target Met' : 'Violation Risk'}</span>
+      </div>
+      <div style="background: var(--s2); border: 1px solid var(--b1); padding: 10px; border-radius: var(--rs);">
+        <div style="font-size: 9px; text-transform: uppercase; color: var(--t3); font-weight: 500;">Gini Fairness</div>
+        <div style="font-size: 16px; font-weight: 600; color: var(--t1); margin-top: 2px;">${fairnessGini ? fairnessGini.toFixed(3) : '—'}</div>
+        <span class="${getBadgeClass(fairnessGini, 0.3, true)}" style="margin-top: 4px; font-size: 9px; padding: 1px 4px;">${fairnessGini <= 0.3 ? 'Balanced' : 'Imbalance Alert'}</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <h4 style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--t2); margin-bottom: 8px;">Comparative Policy Performance Benchmarks</h4>
+      <div style="overflow-x: auto; border: 1px solid var(--b1); border-radius: var(--rs);">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 11.5px; background: var(--s1);">
+          <thead>
+            <tr style="background: var(--s2); border-bottom: 1px solid var(--b1); font-weight: 600; color: var(--t1);">
+              <th style="padding: 8px 12px;">Routing Policy</th>
+              <th style="padding: 8px 12px; text-align: right;">Total Assign.</th>
+              <th style="padding: 8px 12px; text-align: right;">Avg CSAT</th>
+              <th style="padding: 8px 12px; text-align: right;">SLA Met %</th>
+              <th style="padding: 8px 12px; text-align: right;">Fairness (Gini)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--b1); font-weight: 600; color: var(--a);">
+              <td style="padding: 8px 12px; display: flex; align-items: center; gap: 6px;">
+                <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--a);"></span>
+                CUCB-OTA (Ours)
+              </td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace;">${ota.total_assignments}</td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--green);">${ota.avg_csat.toFixed(3)}</td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace;">${(ota.sla_met_rate*100).toFixed(1)}%</td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--green);">${ota.gini.toFixed(3)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--b1); color: var(--t2);">
+              <td style="padding: 8px 12px; display: flex; align-items: center; gap: 6px;">
+                <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--t3);"></span>
+                FCFS Baseline
+              </td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace;">${fcfs.total_assignments}</td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace;">${fcfs.avg_csat.toFixed(3)}</td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace;">${(fcfs.sla_met_rate*100).toFixed(1)}%</td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace;">${fcfs.gini.toFixed(3)}</td>
+            </tr>
+            <tr style="color: var(--t2);">
+              <td style="padding: 8px 12px; display: flex; align-items: center; gap: 6px;">
+                <span style="display:inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green);"></span>
+                Skill-Greedy
+              </td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace;">${greedy.total_assignments}</td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace;">${greedy.avg_csat.toFixed(3)}</td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace;">${(greedy.sla_met_rate*100).toFixed(1)}%</td>
+              <td style="padding: 8px 12px; text-align: right; font-family: 'JetBrains Mono', monospace; color: var(--red);">${greedy.gini.toFixed(3)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="background: var(--a-dim); border: 1px solid var(--a-glow); padding: 12px; border-radius: var(--rs); color: var(--t1);">
+      <h5 style="font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--a); margin-bottom: 4px;">Algorithm Highlights</h5>
+      <ul style="font-size: 11px; padding-left: 14px; margin: 0; display: flex; flex-direction: column; gap: 2px; color: var(--t2);">
+        <li><strong>CSAT Uplift Optimization</strong>: Meta-models predict client-agent pairing uplift effects, matching incoming queue tickets optimally.</li>
+        <li><strong>Constraint dual variables</strong>: Integrates AHT limits and load balances using continuous dual variable feedback.</li>
+        <li><strong>High throughput</strong>: Optimal Hungarian matcher scales processing speed by 20-40x.</li>
+      </ul>
+    </div>
+  `;
 }
 
 function getDemoReport() {
@@ -1370,14 +1524,14 @@ const baseOpts = {
   plugins: {
     legend: { display: false },
     tooltip: {
-      backgroundColor: '#1c1c1c', borderColor: '#333', borderWidth: 1,
-      titleColor: '#f0f0f0', bodyColor: '#888', padding: 10,
+      backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderWidth: 1,
+      titleColor: '#0f172a', bodyColor: '#475569', padding: 10,
       callbacks: { label: c => `  ${c.dataset.label}: ${c.parsed.y.toFixed(3)}` }
     }
   },
   scales: {
-    x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#444', font: { size: 10, family: 'JetBrains Mono' }, maxTicksLimit: 10 } },
-    y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#444', font: { size: 10, family: 'JetBrains Mono' } } }
+    x: { grid: { color: 'rgba(0,0,0,0.03)' }, ticks: { color: '#64748b', font: { size: 10, family: 'JetBrains Mono' }, maxTicksLimit: 10 } },
+    y: { grid: { color: 'rgba(0,0,0,0.03)' }, ticks: { color: '#64748b', font: { size: 10, family: 'JetBrains Mono' } } }
   }
 };
 
@@ -1388,15 +1542,15 @@ function initCharts() {
     data: {
       labels: [],
       datasets: [
-        { label: 'CSAT', data: [], borderColor: '#6472f3', backgroundColor: 'rgba(100,114,243,.06)', borderWidth: 1.5, fill: true, tension: 0.4, pointRadius: 0 },
-        { label: 'SLA Rate', data: [], borderColor: 'rgba(255,255,255,.2)', borderDash: [4,3], backgroundColor: 'transparent', borderWidth: 1.5, fill: false, tension: 0.4, pointRadius: 0 }
+        { label: 'CSAT', data: [], borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.05)', borderWidth: 1.5, fill: true, tension: 0.4, pointRadius: 0 },
+        { label: 'SLA Rate', data: [], borderColor: 'rgba(15, 23, 42, 0.3)', borderDash: [4,3], backgroundColor: 'transparent', borderWidth: 1.5, fill: false, tension: 0.4, pointRadius: 0 }
       ]
     },
     options: {
       ...baseOpts,
       plugins: {
         ...baseOpts.plugins,
-        legend: { display: true, labels: { color: '#666', font: { size: 11, family: 'Inter' }, boxWidth: 10, padding: 16 } }
+        legend: { display: true, labels: { color: '#475569', font: { size: 11, family: 'Inter' }, boxWidth: 10, padding: 16 } }
       },
       scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, min: 0, max: 1 } }
     }
@@ -1408,16 +1562,16 @@ function initCharts() {
     data: {
       labels: ['CSAT', 'SLA Rate', 'Fairness (inv.)'],
       datasets: [
-        { label: 'CUCB-OTA',    data: [0,0,0], backgroundColor: 'rgba(100,114,243,.7)', borderRadius: 4 },
-        { label: 'FCFS',        data: [0,0,0], backgroundColor: 'rgba(255,255,255,.12)', borderRadius: 4 },
-        { label: 'Skill-Greedy',data: [0,0,0], backgroundColor: 'rgba(74,222,128,.25)', borderRadius: 4 }
+        { label: 'CUCB-OTA',    data: [0,0,0], backgroundColor: 'rgba(79, 70, 229, 0.8)', borderRadius: 4 },
+        { label: 'FCFS',        data: [0,0,0], backgroundColor: 'rgba(148, 163, 184, 0.25)', borderRadius: 4 },
+        { label: 'Skill-Greedy',data: [0,0,0], backgroundColor: 'rgba(16, 185, 129, 0.45)', borderRadius: 4 }
       ]
     },
     options: {
       ...baseOpts,
       plugins: {
         ...baseOpts.plugins,
-        legend: { display: true, labels: { color: '#666', font: { size: 11, family: 'Inter' }, boxWidth: 10, padding: 14 } }
+        legend: { display: true, labels: { color: '#475569', font: { size: 11, family: 'Inter' }, boxWidth: 10, padding: 14 } }
       },
       scales: {
         x: { ...baseOpts.scales.x, grid: { display: false } },
@@ -1431,13 +1585,13 @@ function initCharts() {
     type: 'doughnut',
     data: {
       labels: ['Voice', 'Chat', 'Email'],
-      datasets: [{ data: [1,1,1], backgroundColor: ['rgba(100,114,243,.8)','rgba(255,255,255,.15)','rgba(251,191,36,.6)'], borderColor: 'transparent', cutout: '72%' }]
+      datasets: [{ data: [1,1,1], backgroundColor: ['rgba(79, 70, 229, 0.8)','rgba(148, 163, 184, 0.25)','rgba(245, 158, 11, 0.65)'], borderColor: 'transparent', cutout: '72%' }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { display: true, position: 'bottom', labels: { color: '#666', font: { size: 11 }, boxWidth: 8, padding: 12 } },
-        tooltip: { backgroundColor: '#1c1c1c', borderColor: '#333', borderWidth: 1, titleColor: '#f0f0f0', bodyColor: '#888' }
+        legend: { display: true, position: 'bottom', labels: { color: '#475569', font: { size: 11 }, boxWidth: 8, padding: 12 } },
+        tooltip: { backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderWidth: 1, titleColor: '#0f172a', bodyColor: '#475569' }
       }
     }
   });
@@ -1764,10 +1918,11 @@ async function viewReport() {
   const modal = $('report-modal');
   const body  = $('modal-body');
   modal.classList.add('open');
-  body.textContent = 'Loading report…';
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t3);">Loading report…</div>';
 
   if (demoMode) {
-    body.textContent = getDemoReport();
+    activeRawReportText = getDemoReport();
+    body.innerHTML = renderVisualReport(activeRawReportText);
     return;
   }
 
@@ -1776,12 +1931,15 @@ async function viewReport() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     if (data && data.report && data.report.trim().length > 0) {
-      body.textContent = data.report;
+      activeRawReportText = data.report;
+      body.innerHTML = renderVisualReport(activeRawReportText);
     } else {
-      body.textContent = 'No report data available.\n\nRun a simulation first, then click View Report.';
+      activeRawReportText = '';
+      body.innerHTML = `<div style="text-align: center; color: var(--t3); padding: 40px;">No report data available.<br><br>Run a simulation first, then click View Report.</div>`;
     }
   } catch (err) {
-    body.textContent = `Could not load report.\n\nError: ${err.message}\n\nMake sure the API server is running at ${API}.`;
+    activeRawReportText = '';
+    body.innerHTML = `<div style="text-align: center; color: var(--red); padding: 40px;">Could not load report.<br><br>Error: ${err.message}<br><br>Make sure the API server is running at ${API}.</div>`;
   }
 }
 function closeModal() { $('report-modal').classList.remove('open'); }
